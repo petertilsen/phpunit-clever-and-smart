@@ -16,10 +16,13 @@ class PrioritySorter
 
     private $timings = array();
 
-    public function __construct(array $errors, array $timings = array())
+    private $mergeMode = SegmentedQueue::MERGE_MODE_ALL;
+
+    public function __construct(array $errors, array $timings = array(), $mergeMode = SegmentedQueue::MERGE_MODE_ALL)
     {
         $this->errors = $errors;
         $this->timings = $timings;
+        $this->mergeMode = $mergeMode;
     }
 
     public function sort(TestSuite $suite)
@@ -40,6 +43,7 @@ class PrioritySorter
         }
 
         $orderedTests = new SegmentedQueue($tests);
+        $orderedTests->setMergeMode($this->mergeMode);
         foreach ($tests as $position => $test) {
             list($testOrderResult, $time) = $this->sortTest($test, $position, $orderedTests);
             if ($testsOrderResult[0] < $testOrderResult) {
@@ -53,6 +57,7 @@ class PrioritySorter
 
             $groupOrderResult = array(static::SORT_NONE, null);
             $orderedGroup = new SegmentedQueue($group);
+            $orderedGroup->setMergeMode($this->mergeMode);
             foreach ($group as $position => $test) {
                 list($testOrderResult, $time) = $this->sortTest($test, $position, $orderedGroup);
                 if ($groupOrderResult[0] < $testOrderResult) {

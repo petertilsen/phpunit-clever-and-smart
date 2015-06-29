@@ -8,6 +8,9 @@ use SplQueue;
 
 class SegmentedQueue implements IteratorAggregate
 {
+    const MERGE_MODE_ALL = 'all';
+    const MERGE_MODE_ERROR_ONLY = 'error_only';
+
     /** @var SplQueue */
     public $unknown;
 
@@ -17,12 +20,19 @@ class SegmentedQueue implements IteratorAggregate
     /** @var SplPriorityQueue */
     public $timed;
 
+    /** @var string */
+    private $mergeMode = self::MERGE_MODE_ALL;
+
+    /** @var array */
+    private $mergeModes = array();
+
     public function __construct(array $values = array())
     {
         $this->unknown = new SplQueue();
         array_map(array($this->unknown, 'push'), $values);
         $this->errors = new SplQueue();
         $this->timed = new PriorityQueue();
+        $this->initMergeModes();
     }
 
     public function getIterator()
@@ -30,13 +40,40 @@ class SegmentedQueue implements IteratorAggregate
         return new ArrayIterator(
             array_values(
                 array_filter(
-                    array_merge(
+                    $this->merge(
                         iterator_to_array($this->errors),
                         iterator_to_array($this->unknown),
-                        iterator_to_array($this->timed)
-                    )
+                        iterator_to_array($this->timed))
                 )
             )
         );
+    }
+
+    public function setMergeMode($mergeMode)
+    {
+        if (in_array($mergeMode, $this->mergeModes) === false) {
+            throw new \LogicException('Given mergeMode appears not to be part of ' . print_r($this->mergeModes, true));
+        }
+        $this->mergeMode = $mergeMode;
+    }
+
+
+    private function initMergeModes()
+    {
+        $this->mergeModes = array(
+            self::MERGE_MODE_ALL,
+            self::MERGE_MODE_ERROR_ONLY
+        );
+    }
+
+    private function merge(array $errors = array(), array $unknown = array(), array $timed = array())
+    {
+        switch ($this->mergeMode) {
+            case self::MERGE_MODE_ERROR_ONLY:
+                $unknown = ((count($errors) !== 0) ? array() : $unknown);
+                break;
+        }
+
+        return array_merge($errors, $unknown, $timed);
     }
 }

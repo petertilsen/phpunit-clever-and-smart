@@ -69,6 +69,7 @@ you might alter the location of the sqlite storage file, by passing a path to th
                         <string>/my/path/to/.phpunit-cas.db</string>
                     </arguments>
                 </object>
+                <string>[all|error_only]</string>
             </arguments>
         </listener>
     </listeners>

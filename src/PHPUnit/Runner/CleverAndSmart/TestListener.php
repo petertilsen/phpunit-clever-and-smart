@@ -26,9 +26,13 @@ class TestListener implements TestListenerInterface
     /** @var bool */
     private $reordered = false;
 
-    public function __construct(StorageInterface $storage)
+    /** @var bool */
+    private $mergeMode = SegmentedQueue::MERGE_MODE_ALL;
+
+    public function __construct(StorageInterface $storage, $mergeMode = SegmentedQueue::MERGE_MODE_ALL)
     {
         $this->storage = $storage;
+        $this->mergeMode = $mergeMode;
         $this->run = new Run();
     }
 
@@ -53,7 +57,7 @@ class TestListener implements TestListenerInterface
         }
         $this->reordered = true;
 
-        $this->sort($suite);
+        $this->sort($suite, $this->mergeMode);
 
         register_shutdown_function(array($this, 'onFatalError'));
         if (function_exists('pcntl_signal')) {
@@ -61,7 +65,7 @@ class TestListener implements TestListenerInterface
         }
     }
 
-    private function sort(TestSuite $suite)
+    private function sort(TestSuite $suite, $mergeMode)
     {
         $sorter = new PrioritySorter(
             $this->storage->getRecordings(
@@ -79,7 +83,8 @@ class TestListener implements TestListenerInterface
                 array(
                     StorageInterface::STATUS_PASSED,
                 )
-            )
+            ),
+            $mergeMode
         );
         $sorter->sort($suite);
     }

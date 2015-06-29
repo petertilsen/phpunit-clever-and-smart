@@ -38,6 +38,61 @@ class PrioritySorterTest extends TestCase
         $this->assertSame('test4', $tests[3]->getName());
     }
 
+    public function testSimpleSortingErrorsOnlyFallback()
+    {
+        $suite = new TestSuite('suite1', 'suite1');
+        $suite->addTest(new Test('test1'));
+        $suite->addTest(new Test('test2'));
+        $suite->addTest(new Test('test3'));
+        $suite->addTest(new Test('test4'));
+
+        $tests = $suite->tests();
+        $this->assertSame('test1', $tests[0]->getName());
+        $this->assertSame('test2', $tests[1]->getName());
+        $this->assertSame('test3', $tests[2]->getName());
+        $this->assertSame('test4', $tests[3]->getName());
+
+        $sorter = new PrioritySorter(
+            array(array('class' => 'PHPUnit\Runner\CleverAndSmart\Unit\Test', 'test' => 'test2')),
+            array(),
+            \PHPUnit\Runner\CleverAndSmart\SegmentedQueue::MERGE_MODE_ERROR_ONLY
+        );
+        $sorter->sort($suite);
+        $tests = $suite->tests();
+
+        $this->assertSame('test2', $tests[0]->getName());
+        $this->assertCount(1, $tests);
+    }
+
+    public function testSimpleSortingErrorsOnlyNoErrorFallback()
+    {
+        $suite = new TestSuite('suite1', 'suite1');
+        $suite->addTest(new Test('test1'));
+        $suite->addTest(new Test('test2'));
+        $suite->addTest(new Test('test3'));
+        $suite->addTest(new Test('test4'));
+
+        $tests = $suite->tests();
+        $this->assertSame('test1', $tests[0]->getName());
+        $this->assertSame('test2', $tests[1]->getName());
+        $this->assertSame('test3', $tests[2]->getName());
+        $this->assertSame('test4', $tests[3]->getName());
+
+        $sorter = new PrioritySorter(
+            array(),
+            array(),
+            \PHPUnit\Runner\CleverAndSmart\SegmentedQueue::MERGE_MODE_ERROR_ONLY
+        );
+        $sorter->sort($suite);
+        $tests = $suite->tests();
+
+        $this->assertSame('test1', $tests[0]->getName());
+        $this->assertSame('test2', $tests[1]->getName());
+        $this->assertSame('test3', $tests[2]->getName());
+        $this->assertSame('test4', $tests[3]->getName());
+    }
+
+
     public function testSimpleSortingBothMarkedAsErroneous()
     {
         $suite = new TestSuite('suite1', 'suite1');
