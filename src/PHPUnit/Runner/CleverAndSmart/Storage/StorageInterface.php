@@ -33,4 +33,19 @@ interface StorageInterface
      * @return array
      */
     public function getRecordings(array $types, $includeTime = true);
+
+    /**
+     * @param array $types
+     * @param $test_identifier
+     *
+     * @return mixed
+     */
+    public function getRecording(array $types, $test_identifier);
+
+    /**
+     * @param TestCase $test
+     *
+     * @return mixed
+     */
+    public function getTestIdentifiers(TestCase $test);
 }

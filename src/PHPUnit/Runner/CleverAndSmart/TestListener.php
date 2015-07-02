@@ -14,17 +14,25 @@ declare(ticks=1);
 
 class TestListener implements TestListenerInterface
 {
+    const EXCEPTION_SKIPPED = 'Caution!  %s was run in error_only mode. Non faulty tests were ignored. Please fix the errors and rerun';
+
     /** @var Run */
     private $run;
 
     /** @var StorageInterface */
     private $storage;
 
+    /** @var Skipper */
+    private $skipper;
+
     /** @var TestCase */
     private $currentTest;
 
     /** @var bool */
     private $reordered = false;
+
+    /** @var TestSuite */
+    private $onStartTestSuite;
 
     /** @var bool */
     private $mergeMode = SegmentedQueue::MERGE_MODE_ALL;
@@ -34,6 +42,7 @@ class TestListener implements TestListenerInterface
         $this->storage = $storage;
         $this->mergeMode = $mergeMode;
         $this->run = new Run();
+
     }
 
     public function addError(Test $test, Exception $e, $time)
@@ -56,8 +65,11 @@ class TestListener implements TestListenerInterface
             return;
         }
         $this->reordered = true;
+        $this->onStartTestSuite = clone $suite;
 
         $this->sort($suite, $this->mergeMode);
+
+        $this->skipper = $this->initSkipper($suite, $this->mergeMode);
 
         register_shutdown_function(array($this, 'onFatalError'));
         if (function_exists('pcntl_signal')) {
@@ -65,25 +77,20 @@ class TestListener implements TestListenerInterface
         }
     }
 
+
+    private function initSkipper($suite, $mergeMode)
+    {
+        $skipper = new Skipper($suite, $this->storage, $this->getErrors());
+        $skipper->setMergeMode($mergeMode);
+
+        return $skipper;
+    }
+
     private function sort(TestSuite $suite, $mergeMode)
     {
         $sorter = new PrioritySorter(
-            $this->storage->getRecordings(
-                array(
-                    StorageInterface::STATUS_ERROR,
-                    StorageInterface::STATUS_FAILURE,
-                    StorageInterface::STATUS_CANCEL,
-                    StorageInterface::STATUS_FATAL_ERROR,
-                    StorageInterface::STATUS_SKIPPED,
-                    StorageInterface::STATUS_INCOMPLETE,
-                ),
-                false
-            ),
-            $this->storage->getRecordings(
-                array(
-                    StorageInterface::STATUS_PASSED,
-                )
-            ),
+            $this->getErrors(),
+            $this->getPassed(),
             $mergeMode
         );
         $sorter->sort($suite);
@@ -92,6 +99,7 @@ class TestListener implements TestListenerInterface
     public function startTest(Test $test)
     {
         $this->currentTest = $test;
+        $this->skipper->skip($this->currentTest);
     }
 
     public function endTest(Test $test, $time)
@@ -114,6 +122,64 @@ class TestListener implements TestListenerInterface
 
     public function endTestSuite(TestSuite $suite)
     {
+        if ($this->mergeMode !== SegmentedQueue::MERGE_MODE_ALL
+            && count($this->getErrors())) {
+
+            $this->renderHeader();
+            $this->renderBody($suite->getName());
+            $this->renderFooter();
+
+
+        }
+    }
+
+
+    /**
+     * Renders  header.
+     */
+    private function renderHeader()
+    {
+
+    }
+
+    /**
+     * Renders body.
+     */
+    private function renderBody($name)
+    {
+        echo sprintf("\n" . self::EXCEPTION_SKIPPED . "\n", $name);
+    }
+
+    /**
+     * Renders  footer.
+     */
+    private function renderFooter()
+    {
+    }
+
+
+    private function getErrors()
+    {
+        return $this->storage->getRecordings(
+            array(
+                StorageInterface::STATUS_ERROR,
+                StorageInterface::STATUS_FAILURE,
+                StorageInterface::STATUS_CANCEL,
+                StorageInterface::STATUS_FATAL_ERROR,
+                StorageInterface::STATUS_SKIPPED,
+                StorageInterface::STATUS_INCOMPLETE,
+            ),
+            false
+        );
+    }
+
+    private function getPassed()
+    {
+        return $this->storage->getRecordings(
+            array(
+                StorageInterface::STATUS_PASSED,
+            )
+        );
     }
 
     public function onFatalError()

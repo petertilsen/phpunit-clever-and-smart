@@ -96,6 +96,17 @@ class Sqlite3Storage implements StorageInterface
         return $this->select($query, array($types));
     }
 
+    public function getRecording(array $types, $result_identifier)
+    {
+        $query = 'SELECT result_class AS class, result_test AS test
+                FROM {{prefix}}result
+                WHERE result_state IN (%s) AND result_identifier = "%s"
+                GROUP BY result_identifier';
+
+        return $this->select($query, array($types, $result_identifier));
+    }
+
+
     private function transactional($callable /*, ... $args */)
     {
         $this->query('BEGIN');
@@ -117,9 +128,7 @@ class Sqlite3Storage implements StorageInterface
 
     private function insertResult($runId, TestCase $test, $time, $status)
     {
-        $className = get_class($test);
-        $testName = $test->getName();
-        $identifier = hash('sha512', $className . $testName);
+        list($identifier, $className, $testName) = $this->getTestIdentifiers($test);
 
         $this->query(
             "INSERT INTO {{prefix}}result
@@ -137,6 +146,13 @@ class Sqlite3Storage implements StorageInterface
                 array($identifier, $identifier, StorageInterface::STATUS_FAILURE)
             );
         }
+    }
+
+    public function getTestIdentifiers(TestCase $test)
+    {
+        $className = get_class($test);
+        $testName = $test->getName();
+        return array(hash('sha512', $className . $testName), $className, $testName);
     }
 
     private function storeRun(Run $run)

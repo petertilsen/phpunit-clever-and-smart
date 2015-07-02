@@ -6,11 +6,8 @@ use IteratorAggregate;
 use SplPriorityQueue;
 use SplQueue;
 
-class SegmentedQueue implements IteratorAggregate
+class SegmentedQueue implements IteratorAggregate, ModeInterface
 {
-    const MERGE_MODE_ALL = 'all';
-    const MERGE_MODE_ERROR_ONLY = 'error_only';
-
     /** @var SplQueue */
     public $unknown;
 
@@ -52,7 +49,8 @@ class SegmentedQueue implements IteratorAggregate
     public function setMergeMode($mergeMode)
     {
         if (in_array($mergeMode, $this->mergeModes) === false) {
-            throw new \LogicException('Given mergeMode appears not to be part of ' . print_r($this->mergeModes, true));
+            $this->mergeMode = self::MERGE_MODE_ALL;
+            return;
         }
         $this->mergeMode = $mergeMode;
     }
